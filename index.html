@@ -194,11 +194,12 @@
     }
     body[data-screen="win"] #screen-win { display: flex; }
     .win-title {
-      font-size: clamp(48px, 14vw, 96px);
+      font-size: clamp(32px, 9vw, 64px);
       font-weight: 900;
       color: var(--accent);
       margin: 0 0 8px;
-      animation: pop 0.6s cubic-bezier(.2,.9,.3,1.4);
+      line-height: 1.15;
+      animation: pop 1.6s cubic-bezier(.2,.9,.3,1.4);
     }
     .win-sub {
       color: var(--muted);
