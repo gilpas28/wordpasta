@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>WordPasta</title>
+  <style>
+    :root {
+      --bg: #fff5f8;
+      --surface: #ffe3ee;
+      --accent: #ff4d8b;
+      --accent-soft: #ffb3cc;
+      --text: #3a1f2b;
+      --muted: #a76982;
+      --shadow: 0 4px 12px rgba(255, 77, 139, 0.18);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Heebo", "Arial Hebrew", sans-serif;
+      min-height: 100vh;
+      overscroll-behavior: none;
+    }
+    body {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .screen { display: none; padding: 24px 16px 48px; max-width: 480px; margin: 0 auto; }
+    body[data-screen="levels"] #screen-levels,
+    body[data-screen="game"]   #screen-game,
+    body[data-screen="win"]    #screen-win { display: block; }
+
+    /* ---------- level select ---------- */
+    .brand {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--accent);
+      margin: 24px 0 36px;
+      letter-spacing: 0.5px;
+    }
+    .brand .emoji { font-size: 36px; vertical-align: middle; margin-inline-end: 6px; }
+    .levels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+      gap: 16px;
+      direction: ltr;
+    }
+    .level-btn {
+      aspect-ratio: 1;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 22px;
+      font-size: 36px;
+      font-weight: 800;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+      font-family: inherit;
+    }
+    .level-btn:active { transform: scale(0.95); }
+
+    /* ---------- game screen ---------- */
+    .game-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .back-btn {
+      background: none;
+      border: none;
+      padding: 8px;
+      font-size: 28px;
+      color: var(--accent);
+      cursor: pointer;
+      width: 44px;
+      font-family: inherit;
+    }
+    .game-title-wrap { flex: 1; text-align: center; }
+    .game-title { font-size: 22px; font-weight: 700; }
+    .game-clue { font-size: 14px; color: var(--muted); margin-top: 2px; }
+    .header-spacer { width: 44px; }
+
+    .grid-wrap {
+      position: relative;
+      width: min(90vw, 420px);
+      margin: 0 auto;
+      direction: ltr;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(var(--cols, 4), 1fr);
+      gap: 8px;
+      touch-action: none;
+      position: relative;
+      z-index: 1;
+    }
+    .cell {
+      aspect-ratio: 1;
+      background: var(--surface);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(28px, 8vw, 44px);
+      font-weight: 800;
+      color: var(--text);
+      transition: opacity 0.3s ease, transform 0.3s ease, background 0.15s ease;
+      position: relative;
+      z-index: 1;
+    }
+    .cell.vanished {
+      opacity: 0;
+      transform: scale(0.6);
+      pointer-events: none;
+    }
+    .cell.selected {
+      background: transparent;
+    }
+    .selection-svg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: visible;
+    }
+    .selection-svg path {
+      fill: none;
+      stroke: var(--accent-soft);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.85;
+    }
+
+    /* ---------- answers ---------- */
+    .answers {
+      margin-top: 32px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .answer {
+      display: flex;
+      gap: 4px;
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 10px;
+      box-shadow: var(--shadow);
+    }
+    .ans-tile {
+      width: 24px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 6px;
+    }
+    .answer.unsolved .ans-tile {
+      background: var(--surface);
+      position: relative;
+    }
+    .answer.unsolved .ans-tile::after {
+      content: "";
+      position: absolute;
+      bottom: 6px;
+      width: 10px;
+      height: 2px;
+      background: var(--muted);
+      border-radius: 2px;
+    }
+    .answer.solved .ans-tile {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* ---------- win screen ---------- */
+    #screen-win {
+      min-height: 100vh;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 24px;
+    }
+    body[data-screen="win"] #screen-win { display: flex; }
+    .win-title {
+      font-size: clamp(48px, 14vw, 96px);
+      font-weight: 900;
+      color: var(--accent);
+      margin: 0 0 8px;
+      animation: pop 0.6s cubic-bezier(.2,.9,.3,1.4);
+    }
+    .win-sub {
+      color: var(--muted);
+      font-size: 18px;
+      margin-bottom: 36px;
+    }
+    .win-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 14px 32px;
+      font-size: 18px;
+      font-weight: 700;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .win-btn:active { transform: scale(0.96); }
+    @keyframes pop {
+      0%   { transform: scale(0.4); opacity: 0; }
+      60%  { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body data-screen="levels">
+
+  <div id="screen-levels" class="screen">
+    <h1 class="brand"><span class="emoji">🍝</span>WordPasta</h1>
+    <div class="levels-grid" id="levels-grid"></div>
+  </div>
+
+  <div id="screen-game" class="screen">
+    <div class="game-header">
+      <button class="back-btn" id="back-btn" aria-label="חזרה">→</button>
+      <div class="game-title-wrap">
+        <div class="game-title" id="game-title">שלב 1</div>
+        <div class="game-clue" id="game-clue"></div>
+      </div>
+      <div class="header-spacer"></div>
+    </div>
+    <div class="grid-wrap" id="grid-wrap">
+      <div class="grid" id="grid"></div>
+      <svg class="selection-svg" id="sel-svg"><path id="sel-path" d=""/></svg>
+    </div>
+    <div class="answers" id="answers"></div>
+  </div>
+
+  <div id="screen-win" class="screen">
+    <h1 class="win-title">Nice!!!!</h1>
+    <div class="win-sub">שלב <span id="win-level">1</span> הושלם</div>
+    <button class="win-btn" id="win-btn">חזרה לשלבים</button>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    const LEVELS = [
+      {
+        id: 1,
+        clue: 'את מי מאי אוהבת',
+        rows: 4,
+        cols: 4,
+        grid: [
+          ['ה','ג','ר','ס'],
+          ['ר','מ','ו','ט'],
+          ['ק','ס','ל','י'],
+          ['ו','ל','צ','ג'],
+        ],
+        answers: [
+          { path: [[3,3],[2,3],[2,2]] },                            // גיל
+          { path: [[0,1],[0,2],[1,2],[1,3]] },                      // גרוט
+          { path: [[1,1],[1,2],[2,2],[2,3]] },                      // מולי
+          { path: [[0,3],[1,3],[2,3],[3,2]] },                      // סטיצ
+          { path: [[0,0],[1,0],[2,0],[3,0],[3,1],[2,1]] },          // הרקולס
+          { path: [[2,2],[1,2],[1,3],[2,3]] },                      // לוטי
+        ],
+      },
+      {
+        id: 2,
+        clue: 'מילים שמאי אוהבת',
+        rows: 5,
+        cols: 6,
+        grid: [
+          ['ח','ו','צ','פ','ה','ד'],
+          ['ב','ר','י','נ','ל','מ'],
+          ['כ','ו','י','ש','נ','א'],
+          ['ה','ט','ע','ט','ע','ק'],
+          ['ס','י','ס','ט','ה','ה'],
+        ],
+        answers: [
+          { path: [[0,0],[0,1],[0,2],[0,3],[1,3],[1,2],[2,2],[2,3],[2,4]] }, // חוצפניישנ
+          { path: [[1,5],[0,5],[0,4],[0,3],[1,4],[2,5],[3,5],[4,5]] },       // מדהפלאקה
+          { path: [[1,0],[1,1],[2,1],[2,0],[3,0]] },                         // ברוכה
+          { path: [[4,0],[4,1],[4,2],[4,3],[4,4]] },                         // סיסטה
+          { path: [[3,1],[3,2],[3,3],[3,4]] },                               // טעטע
+        ],
+      },
+    ];
+
+    LEVELS.forEach(L => L.answers.forEach(a => {
+      a.word = a.path.map(([r,c]) => L.grid[r][c]).join('');
+    }));
+
+    const body = document.body;
+    const levelsGridEl = document.getElementById('levels-grid');
+    const gridEl = document.getElementById('grid');
+    const gridWrap = document.getElementById('grid-wrap');
+    const selPath = document.getElementById('sel-path');
+    const selSvg = document.getElementById('sel-svg');
+    const answersEl = document.getElementById('answers');
+    const titleEl = document.getElementById('game-title');
+    const clueEl = document.getElementById('game-clue');
+    const backBtn = document.getElementById('back-btn');
+    const winBtn = document.getElementById('win-btn');
+    const winLevelEl = document.getElementById('win-level');
+
+    let current = null;
+    let selection = [];
+    let solved = new Set();
+    let cellOwners = new Map();
+
+    const key = (r, c) => r + ',' + c;
+
+    function renderLevelSelect() {
+      levelsGridEl.innerHTML = '';
+      LEVELS.forEach(L => {
+        const btn = document.createElement('button');
+        btn.className = 'level-btn';
+        btn.textContent = L.id;
+        btn.addEventListener('click', () => startLevel(L));
+        levelsGridEl.appendChild(btn);
+      });
+    }
+
+    function startLevel(L) {
+      current = L;
+      solved = new Set();
+      selection = [];
+      cellOwners = new Map();
+      L.answers.forEach((a, idx) => {
+        a.path.forEach(([r, c]) => {
+          const k = key(r, c);
+          if (!cellOwners.has(k)) cellOwners.set(k, new Set());
+          cellOwners.get(k).add(idx);
+        });
+      });
+      titleEl.textContent = 'שלב ' + L.id;
+      clueEl.textContent = L.clue || '';
+      renderGrid();
+      renderAnswers();
+      updateSelectionPath();
+      body.dataset.screen = 'game';
+    }
+
+    function renderGrid() {
+      gridEl.style.setProperty('--cols', current.cols);
+      gridEl.innerHTML = '';
+      for (let r = 0; r < current.rows; r++) {
+        for (let c = 0; c < current.cols; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          cell.textContent = current.grid[r][c];
+          gridEl.appendChild(cell);
+        }
+      }
+    }
+
+    function renderAnswers() {
+      answersEl.innerHTML = '';
+      current.answers.forEach((a, idx) => {
+        const row = document.createElement('div');
+        row.className = 'answer ' + (solved.has(idx) ? 'solved' : 'unsolved');
+        for (let i = 0; i < a.word.length; i++) {
+          const t = document.createElement('div');
+          t.className = 'ans-tile';
+          if (solved.has(idx)) t.textContent = a.word[i];
+          row.appendChild(t);
+        }
+        answersEl.appendChild(row);
+      });
+    }
+
+    function getCellAt(x, y) {
+      const el = document.elementFromPoint(x, y);
+      if (!el) return null;
+      const cell = el.closest('.cell');
+      if (!cell || cell.parentElement !== gridEl) return null;
+      if (cell.classList.contains('vanished')) return null;
+      return { r: +cell.dataset.r, c: +cell.dataset.c };
+    }
+
+    function adjacent(a, b) {
+      return Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.c)) === 1;
+    }
+
+    function tryAddCell(cell) {
+      if (selection.length === 0) {
+        selection.push(cell);
+      } else {
+        const last = selection[selection.length - 1];
+        if (last.r === cell.r && last.c === cell.c) return;
+        if (selection.length >= 2) {
+          const prev = selection[selection.length - 2];
+          if (prev.r === cell.r && prev.c === cell.c) {
+            selection.pop();
+            afterChange();
+            return;
+          }
+        }
+        if (selection.some(s => s.r === cell.r && s.c === cell.c)) return;
+        if (adjacent(last, cell)) {
+          selection.push(cell);
+        } else {
+          selection = [cell];
+        }
+      }
+      afterChange();
+    }
+
+    function afterChange() {
+      updateSelectedClasses();
+      updateSelectionPath();
+      checkWordMatch();
+    }
+
+    function checkWordMatch() {
+      if (selection.length < 2) return;
+      const word = selection.map(s => current.grid[s.r][s.c]).join('');
+      const idx = current.answers.findIndex((a, i) => !solved.has(i) && a.word === word);
+      if (idx < 0) return;
+      solved.add(idx);
+      current.answers[idx].path.forEach(([r, c]) => {
+        const k = key(r, c);
+        const owners = cellOwners.get(k);
+        if (owners) {
+          owners.delete(idx);
+          if (owners.size === 0) {
+            const cell = gridEl.querySelector('.cell[data-r="' + r + '"][data-c="' + c + '"]');
+            if (cell) cell.classList.add('vanished');
+          }
+        }
+      });
+      renderAnswers();
+      selection = [];
+      updateSelectedClasses();
+      updateSelectionPath();
+      if (solved.size === current.answers.length) {
+        winLevelEl.textContent = current.id;
+        setTimeout(() => { body.dataset.screen = 'win'; }, 100);
+      }
+    }
+
+    function updateSelectedClasses() {
+      const set = new Set(selection.map(s => key(s.r, s.c)));
+      gridEl.querySelectorAll('.cell').forEach(c => {
+        c.classList.toggle('selected', set.has(key(+c.dataset.r, +c.dataset.c)));
+      });
+    }
+
+    function updateSelectionPath() {
+      if (!current || selection.length === 0) {
+        selPath.setAttribute('d', '');
+        return;
+      }
+      const wrapRect = gridWrap.getBoundingClientRect();
+      const pts = selection.map(s => {
+        const cell = gridEl.querySelector('.cell[data-r="' + s.r + '"][data-c="' + s.c + '"]');
+        const r = cell.getBoundingClientRect();
+        return {
+          x: r.left + r.width / 2 - wrapRect.left,
+          y: r.top + r.height / 2 - wrapRect.top,
+          w: r.width,
+        };
+      });
+      selSvg.setAttribute('viewBox', '0 0 ' + wrapRect.width + ' ' + wrapRect.height);
+      selSvg.setAttribute('width', wrapRect.width);
+      selSvg.setAttribute('height', wrapRect.height);
+      selPath.setAttribute('stroke-width', pts[0].w * 0.78);
+      const d = pts.length === 1
+        ? 'M ' + pts[0].x + ' ' + pts[0].y + ' l 0.01 0'
+        : pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x + ' ' + p.y).join(' ');
+      selPath.setAttribute('d', d);
+    }
+
+    function clearSelection() {
+      if (selection.length === 0) return;
+      selection = [];
+      updateSelectedClasses();
+      updateSelectionPath();
+    }
+
+    let dragging = false;
+
+    gridEl.addEventListener('pointerdown', e => {
+      const cell = getCellAt(e.clientX, e.clientY);
+      if (!cell) return;
+      e.preventDefault();
+      try { gridEl.setPointerCapture(e.pointerId); } catch (_) {}
+      dragging = true;
+      tryAddCell(cell);
+    });
+
+    gridEl.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const cell = getCellAt(e.clientX, e.clientY);
+      if (!cell) return;
+      tryAddCell(cell);
+    });
+
+    const endDrag = () => { dragging = false; };
+    gridEl.addEventListener('pointerup', endDrag);
+    gridEl.addEventListener('pointercancel', endDrag);
+
+    document.addEventListener('pointerdown', e => {
+      if (body.dataset.screen !== 'game') return;
+      if (gridWrap.contains(e.target)) return;
+      clearSelection();
+    });
+
+    window.addEventListener('resize', updateSelectionPath);
+
+    backBtn.addEventListener('click', () => {
+      clearSelection();
+      body.dataset.screen = 'levels';
+    });
+
+    winBtn.addEventListener('click', () => {
+      body.dataset.screen = 'levels';
+    });
+
+    renderLevelSelect();
+  })();
+  </script>
+</body>
+</html>
